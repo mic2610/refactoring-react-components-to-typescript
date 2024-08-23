@@ -7,16 +7,37 @@ import { scope } from "../lib/utils";
 import { WindowsWindow, WindowsBox, WindowsWindowHeader } from "./windows-ui";
 import { CountDisplay } from "./count-display";
 
-const initialContext = {
+const initialContext: IBoardContext = {
 	gameState: "idle",
 	cells: [],
 	mines: [],
 	initialized: false,
 };
 
-// type GameState = "idle" | "active" | "won" | "lost";
+type GameState = "idle" | "active" | "won" | "lost";
 
-function reducer(context, event) {
+interface IBoardContext {
+	gameState: GameState;
+	cells: Cell[];
+	mines: number[];
+	initialized: boolean;
+}
+
+type BoardEvent =
+	| { type: "RESET"; board: IBoardConfig }
+	| { type: "REVEAL_CELL"; index: number; board: IBoardConfig }
+	| { type: "REVEAL_ADJACENT_CELLS"; index: number; board: IBoardConfig }
+	| { type: "MARK_CELL"; index: number; board: IBoardConfig }
+	| { type: "MARK_REMAINING_MINES"; board: IBoardConfig };
+
+interface IBoardConfig {
+	rows: number;
+	columns: number;
+	mines: number;
+	initialized: boolean;
+}
+
+function reducer(context: IBoardContext, event: BoardEvent): IBoardContext {
 	if (event.type === "RESET") {
 		return {
 			...context,
@@ -204,12 +225,6 @@ function reducer(context, event) {
 	return context;
 }
 
-// interface BoardConfig {
-// 	rows: number;
-// 	columns: number;
-// 	mines: number;
-// }
-
 const Board = ({ board = presets.Beginner }) => {
 	let [{ gameState, cells, mines }, send] = React.useReducer(
 		reducer,
@@ -235,7 +250,15 @@ const Board = ({ board = presets.Beginner }) => {
 
 	let reset = React.useCallback(() => {
 		resetTimer();
-		send({ type: "RESET", board });
+		send({
+			type: "RESET",
+			board: {
+				rows: board.rows,
+				columns: board.columns,
+				mines: board.mines,
+				initialized: false,
+			},
+		});
 	}, [board, resetTimer]);
 
 	let firstRenderRef = React.useRef(true);
@@ -249,12 +272,12 @@ const Board = ({ board = presets.Beginner }) => {
 
 	let remainingMineCount = getRemainingMineCount(cells, board.mines);
 
-	let rowArray = React.useMemo(
+	let rowArray = React.useMemo<null[]>(
 		() => Array(board.rows).fill(null),
 		[board.rows]
 	);
 	let getColumnArray = React.useCallback(
-		(rowIndex) =>
+		(rowIndex: number): Cell[] =>
 			cells.slice(
 				board.columns * rowIndex,
 				board.columns * rowIndex + board.columns
@@ -363,7 +386,7 @@ const GridCell = ({
 }) => {
 	let gameIsOver = gameState === "won" || gameState === "lost";
 	let isRevealed = status === "exploded" || status === "revealed";
-	let ref = React.useRef(null);
+	let ref = React.useRef<HTMLButtonElement>(null);
 
 	return (
 		<div
@@ -558,7 +581,14 @@ function getCellCount(board) {
  * @param {number[]} [mines]
  * @returns {Cell[]}
  */
-function createCells(board, mines) {
+function createCells(
+	board: {
+		rows: number;
+		columns: number;
+		mines: number;
+	},
+	mines?: number[]
+): Cell[] {
 	return Array(getCellCount(board))
 		.fill(null)
 		.map((_, index) => {
@@ -736,8 +766,8 @@ function getTotalRevealedCells(cells) {
  * @param {"idle" | "active" | "won" | "lost"} gameState
  * @returns {[number, () => void]}
  */
-function useTimer(gameState) {
-	let [timeElapsed, setTimeElapsed] = React.useState(0);
+function useTimer(gameState): [number, () => void] {
+	let [timeElapsed, setTimeElapsed] = React.useState<number>(0);
 	React.useEffect(() => {
 		if (gameState === "active") {
 			let id = window.setInterval(() => {

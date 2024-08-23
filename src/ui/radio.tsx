@@ -2,7 +2,15 @@ import * as React from "react";
 import cx from "clsx";
 import { scope } from "../lib/utils";
 
-const RadioGroupContext = React.createContext(null);
+const RadioGroupContext = React.createContext<null | RadioGroupContextValue>(
+	null
+);
+
+interface RadioGroupContextValue {
+	checked: string | null | undefined;
+	onChange: (value: string) => void;
+	name: string;
+}
 
 const RadioGroup = ({ children, checked, onChange, name }) => {
 	return (
