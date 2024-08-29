@@ -2,17 +2,21 @@ import * as React from "react";
 import cx from "clsx";
 import { scope } from "../lib/utils";
 
-const RadioGroupContext = React.createContext<null | RadioGroupContextValue>(
+interface RadioGroupContextValue {
+	checked: string | null | undefined;
+	onChange(value: string): void;
+	name: string;
+}
+const RadioGroupContext = React.createContext<RadioGroupContextValue | null>(
 	null
 );
 
-interface RadioGroupContextValue {
-	checked: string | null | undefined;
-	onChange: (value: string) => void;
-	name: string;
-}
-
-const RadioGroup = ({ children, checked, onChange, name }) => {
+const RadioGroup: React.FC<RadioGroupProps> = ({
+	children,
+	checked,
+	onChange,
+	name,
+}) => {
 	return (
 		<RadioGroupContext.Provider value={{ checked, onChange, name }}>
 			{children}
@@ -20,9 +24,19 @@ const RadioGroup = ({ children, checked, onChange, name }) => {
 	);
 };
 
-const RadioContext = React.createContext(null);
+interface RadioGroupProps {
+	checked: string | null | undefined;
+	onChange(value: string): void;
+	name: string;
+}
 
-const Radio = ({ children, id, value }) => {
+interface RadioContextValue {
+	id: string;
+	value: string;
+}
+const RadioContext = React.createContext<RadioContextValue | null>(null);
+
+const Radio: React.FC<RadioProps> = ({ children, id, value }) => {
 	return (
 		<RadioContext.Provider value={{ id: String(id), value: String(value) }}>
 			{children}
@@ -30,10 +44,15 @@ const Radio = ({ children, id, value }) => {
 	);
 };
 
-const RadioInput = React.forwardRef(
+interface RadioProps {
+	id: string | number;
+	value: string | number;
+}
+
+const RadioInput = React.forwardRef<HTMLInputElement, RadioInputProps>(
 	({ children, className, ...props }, forwardedRef) => {
-		let { id, value } = React.useContext(RadioContext);
-		let { checked, onChange, name } = React.useContext(RadioGroupContext);
+		let { id, value } = useRadioContext("RadioInput");
+		let { checked, onChange, name } = useRadioGroupContext("RadioInput");
 
 		return (
 			<input
@@ -60,9 +79,15 @@ const RadioInput = React.forwardRef(
 
 RadioInput.displayName = "RadioInput";
 
-const RadioLabel = React.forwardRef(
+interface RadioInputProps
+	extends Omit<
+		React.ComponentPropsWithRef<"input">,
+		"id" | "type" | "name" | "checked" | "value"
+	> {}
+
+const RadioLabel = React.forwardRef<HTMLLabelElement, RadioLabelProps>(
 	({ children, className, ...props }, forwardedRef) => {
-		let { id } = React.useContext(RadioContext);
+		let { id } = useRadioContext("RadioLabel");
 		return (
 			<label
 				{...props}
@@ -78,4 +103,24 @@ const RadioLabel = React.forwardRef(
 
 RadioLabel.displayName = "RadioLabel";
 
+interface RadioLabelProps
+	extends Omit<React.ComponentPropsWithRef<"label">, "htmlFor"> {}
+
+export type { RadioGroupProps, RadioProps, RadioInputProps, RadioLabelProps };
 export { RadioGroup, Radio, RadioInput, RadioLabel };
+
+function useRadioContext(name: string) {
+	let ctx = React.useContext(RadioContext);
+	if (!ctx) {
+		throw Error(`A ${name} was rendered outside of a Radio component.`);
+	}
+	return ctx;
+}
+
+function useRadioGroupContext(name: string) {
+	let ctx = React.useContext(RadioGroupContext);
+	if (!ctx) {
+		throw Error(`A ${name} was rendered outside of a RadioGroup component.`);
+	}
+	return ctx;
+}
